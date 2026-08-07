@@ -4,11 +4,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import orders_collection
+from observability import configure_observability
 from routes import orders
 
 logger = logging.getLogger("order-service")
 
 app = FastAPI(title="Sports Store — Order Service")
+configure_observability(app, "order-service")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,8 +28,11 @@ async def create_indexes():
         await orders_collection.create_index("order_number", unique=True)
         await orders_collection.create_index([("user_id", 1), ("created_at", -1)])
         await orders_collection.create_index("status")
-    except Exception as exc:  # Mongo may be unavailable (e.g. unit tests)
-        logger.warning("Index creation skipped: %s", exc)
+    except Exception:  # Mongo may be unavailable (e.g. unit tests)
+        logger.warning(
+            "database_index_creation_skipped",
+            extra={"event": "database_index_creation_skipped"},
+        )
 
 
 @app.get("/health")

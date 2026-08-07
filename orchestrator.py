@@ -84,7 +84,10 @@ async def checkout(
         if not decremented:
             # Paid but stock update failed — an accepted MVP gap; real systems
             # reserve inventory before charging (see README Phase 2 exercises).
-            logger.error("Stock decrement failed after payment for %s", order_number)
+            logger.error(
+                "stock_decrement_after_payment_failed",
+                extra={"event": "stock_decrement_after_payment_failed"},
+            )
         await clients.clear_cart(token)
         new_status = "paid"
     else:
