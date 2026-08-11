@@ -35,16 +35,35 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+          python -m pip install ruff==0.15.20
+      - name: Run Ruff lint
+        run: ruff check .
+      - name: Verify Ruff formatting
+        run: ruff format --check .
       - name: Run tests
         run: python -m pytest
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Validate container build
-        uses: docker/build-push-action@v6
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.2.0
         with:
-          context: .
-          push: false
-          tags: ${{ env.ECR_REPOSITORY }}:ci-${{ github.sha }}
+          dockerfile: Dockerfile
+      - name: Build validation image
+        run: docker build --tag "${ECR_REPOSITORY}:ci-${GITHUB_SHA}" .
+      - name: Scan filesystem and dependencies
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+      - name: Scan validation image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "${{ env.ECR_REPOSITORY }}:ci-${{ github.sha }}"
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

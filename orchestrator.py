@@ -101,10 +101,12 @@ async def checkout(
     order["updated_at"] = datetime.now(timezone.utc)
     await orders_collection.update_one(
         {"order_number": order_number},
-        {"$set": {
-            "status": new_status,
-            "payment": order["payment"],
-            "updated_at": order["updated_at"],
-        }},
+        {
+            "$set": {
+                "status": new_status,
+                "payment": order["payment"],
+                "updated_at": order["updated_at"],
+            }
+        },
     )
     return order

@@ -17,14 +17,22 @@ def observability_test_route(resource_id: str):
 def _sample_value(metrics_text, metric_name, expected_labels):
     for family in text_string_to_metric_families(metrics_text):
         for sample in family.samples:
-            if sample.name == metric_name and all(sample.labels.get(key) == value for key, value in expected_labels.items()):
+            if sample.name == metric_name and all(
+                sample.labels.get(key) == value
+                for key, value in expected_labels.items()
+            ):
                 return sample.value
     return 0.0
 
 
 def test_metrics_output_counter_status_and_normalized_route(client):
     sensitive_id = "order-507f1f77bcf86cd799439011"
-    labels = {"service": "order-service", "method": "GET", "route": "/observability-test/{resource_id}", "status_code": "202"}
+    labels = {
+        "service": "order-service",
+        "method": "GET",
+        "route": "/observability-test/{resource_id}",
+        "status_code": "202",
+    }
     before = _sample_value(client.get("/metrics").text, "http_requests_total", labels)
     with patch.object(observability.access_logger, "info") as access_log:
         response = client.get(f"/observability-test/{sensitive_id}")
@@ -48,7 +56,19 @@ def test_not_found_status_is_counted_without_raw_path(client):
     assert client.get(raw_path).status_code == 404
     metrics = client.get("/metrics").text
     assert raw_path not in metrics
-    assert _sample_value(metrics, "http_requests_total", {"service": "order-service", "method": "GET", "route": "__unmatched__", "status_code": "404"}) >= 1
+    assert (
+        _sample_value(
+            metrics,
+            "http_requests_total",
+            {
+                "service": "order-service",
+                "method": "GET",
+                "route": "__unmatched__",
+                "status_code": "404",
+            },
+        )
+        >= 1
+    )
 
 
 def test_json_formatter_emits_safe_one_line_fields():
@@ -61,6 +81,15 @@ def test_json_formatter_emits_safe_one_line_fields():
     rendered = JsonFormatter("order-service").format(record)
     payload = json.loads(rendered)
     assert "\n" not in rendered
-    assert set(payload) == {"timestamp", "level", "service", "event", "method", "route", "status", "duration_ms"}
+    assert set(payload) == {
+        "timestamp",
+        "level",
+        "service",
+        "event",
+        "method",
+        "route",
+        "status",
+        "duration_ms",
+    }
     assert payload["service"] == "order-service"
     assert payload["route"] == "/api/items/{item_id}"

@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
-
 HTTP_REQUESTS = Counter(
     "http_requests_total",
     "Total HTTP requests handled by the service.",
