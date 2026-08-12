@@ -49,7 +49,7 @@ jobs:
       - name: Build validation image
         run: docker build --tag "${ECR_REPOSITORY}:ci-${GITHUB_SHA}" .
       - name: Scan filesystem and dependencies
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -58,7 +58,7 @@ jobs:
           ignore-unfixed: true
           exit-code: 1
       - name: Scan validation image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: "${{ env.ECR_REPOSITORY }}:ci-${{ github.sha }}"
           severity: HIGH,CRITICAL
