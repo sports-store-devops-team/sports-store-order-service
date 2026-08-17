@@ -1,7 +1,18 @@
 name: CI
 
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Deploy {0}', inputs.deployment_id) || format('CI {0} {1}', github.event_name, github.sha) }}
+
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full lowercase commit SHA expected from the remote main branch
+        required: true
+        type: string
+      deployment_id:
+        description: Unique non-secret deployment correlation identifier
+        required: true
+        type: string
   pull_request:
     branches: [main]
   push:
@@ -23,6 +34,18 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Validate manual publication request
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_REF}" == 'refs/heads/main' ]] || { echo '::error::Manual publication requires the main branch.'; exit 1; }
+          [[ "${EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::The expected SHA is malformed.'; exit 1; }
+          [[ "${EXPECTED_SHA}" == "${GITHUB_SHA}" ]] || { echo '::error::The expected SHA does not match the dispatched revision.'; exit 1; }
+          [[ "${DEPLOYMENT_ID}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || { echo '::error::The deployment identifier is malformed.'; exit 1; }
       - name: Check out source
         uses: actions/checkout@v5
       - name: Set up Python
@@ -66,7 +89,9 @@ jobs:
           exit-code: 1
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.expected_sha == github.sha)
     needs: validate
     runs-on: ubuntu-24.04
     permissions:
